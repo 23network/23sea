@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>海洋探秘大冒险｜科普+清理+答题+排行榜</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:"Microsoft Yahei",sans-serif;}
+body{overflow:hidden;width:100vw;height:100vh;}
+/* 主海洋画布 */
+#ocean{width:100%;height:100vh;position:relative;
+background:linear-gradient(180deg,#0ea5e9 0%,#0284c7 40%,#0369a1 70%,#075985 100%);transition:background 1.5s ease;}
+#ocean.night{background:linear-gradient(180deg,#0c4a6e 0%,#075985 40%,#0c4a6e 70%,#082f49 100%);}
+/* 海浪 */
+.wave{position:absolute;bottom:0;left:0;width:200%;height:120px;
+background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%23ffffff22' d='M0,192L48,208C96,224,192,256,288,250.7C384,245,480,203,576,181.3C672,160,768,160,864,176C960,192,1056,224,1152,229.3C1248,235,1344,213,1392,202.7L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E");
+animation:waveMove 8s linear infinite;}
+.wave:nth-child(2){animation-delay:-4s;opacity:0.5;}
+@keyframes waveMove{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
+/* 气泡 */
+.bubble{position:absolute;border-radius:50%;background:rgba(255,255,255,0.4);animation:bubbleUp linear infinite;}
+@keyframes bubbleUp{0%{bottom:-20px;opacity:0;}10%{opacity:0.6;}90%{opacity:0.7;}100%{bottom:110vh;opacity:0;}}
+/* 海洋生物、垃圾通用 */
+.sea-creature,.trash-item{position:absolute;cursor:pointer;transition:transform 0.2s;animation:autoSwim linear infinite;}
+.sea-creature:hover,.trash-item:hover{transform:scale(1.15);filter:brightness(1.2);}
+@keyframes autoSwim{0%{transform:translateY(0) rotate(0deg);}25%{transform:translateY(-8px) rotate(2deg);}50%{transform:translateY(0) rotate(0deg);}75%{transform:translateY(8px) rotate(-2deg);}100%{transform:translateY(0) rotate(0deg);}}
+/* 顶部全局UI */
+.global-header{position:fixed;top:0;left:0;width:100%;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;z-index:100;}
+.title{color:#fff;font-size:22px;text-shadow:0 2px 8px #003355;}
+.top-info{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+.score-box{background:rgba(255,255,255,0.2);backdrop-filter:blur(4px);padding:6px 14px;border-radius:30px;color:#fff;}
+.btn-base{border:none;padding:6px 14px;border-radius:20px;background:rgba(255,255,255,0.3);color:#fff;cursor:pointer;font-size:14px;}
+.btn-base:hover{background:rgba(255,255,255,0.45);}
+/* 功能菜单按钮组 */
+.menu-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:100;flex-wrap:wrap;justify-content:center;}
+.menu-btn{padding:10px 18px;border:none;border-radius:10px;background:#0ea5e9;color:#fff;cursor:pointer;font-size:15px;box-shadow:0 4px 12px #00558844;}
+.menu-btn:hover{background:#0284c7;}
+/* 弹窗通用样式 */
+.modal{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:999;opacity:0;pointer-events:none;transition:opacity 0.3s;}
+.modal.show{opacity:1;pointer-events:auto;}
+.modal-box{width:min(92%,520px);max-height:85vh;overflow-y:auto;background:#fff;border-radius:16px;padding:24px;transform:scale(0.85);transition:transform 0.3s;}
+.modal.show .modal-box{transform:scale(1);}
+.modal-box h2{color:#0369a1;margin-bottom:16px;border-bottom:2px solid #0ea5e9;padding-bottom:8px;}
+.close-modal{margin-top:16px;padding:8px 24px;border:none;background:#0ea5e9;color:#fff;border-radius:8px;cursor:pointer;}
+.close-modal:hover{background:#0284c7;}
+/* 科普通用段落 */
+#pop-info p,#trash-science p,#creature-summary p{line-height:1.7;color:#333;margin-bottom:12px;}
+/* 科普条目样式 */
+.trash-science-item,.creature-item{padding:10px 0;border-bottom:1px solid #eee;}
+.trash-science-item h4,.creature-item h4{color:#0284c7;margin-bottom:4px;}
+/* 垃圾清理小游戏 */
+#clean-modal .game-hud{display:flex;justify-content:space-between;margin-bottom:12px;font-weight:bold;color:#0369a1;}
+/* 答题弹窗 */
+.answer-list{margin-top:16px;display:grid;gap:10px;}
+.answer-btn{padding:12px;border:1px solid #cce7ff;border-radius:8px;background:#f8fbff;cursor:pointer;text-align:left;transition:0.2s;}
+.answer-btn:hover{background:#e6f4ff;border-color:#0ea5e9;}
+.answer-btn.right{background:#dcfce7;border-color:#22c55e;}
+.answer-btn.wrong{background:#fee2e2;border-color:#ef4444;}
+/* 排行榜 */
+.rank-list{margin-top:12px;}
+.rank-item{display:flex;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #eee;}
+.rank-top1{background:#fffbeb;}
+.rank-top2{background:#f7fafc;}
+.rank-top3{background:#fefce8;}
+/* 游戏结束面板 */
+.result-text{font-size:18px;font-weight:bold;margin:12px 0;text-align:center;}
+/* 垃圾图标只显示图标，不显示文字 */
+.trash-icon-only{font-size:36px;line-height:1;}
+.trash-icon-only span{display:none;}
+</style>
+</head>
+<body>
+<!-- 主海洋背景 -->
+<div id="ocean">
+    <div class="wave"></div>
+    <div class="wave"></div>
+</div>
+
+<!-- 顶部全局状态栏 -->
+<div class="global-header">
+    <div class="title">🌊 海洋探秘大冒险</div>
+    <div class="top-info">
+        <div class="score-box">总积分：<span id="totalScore">0</span></div>
+        <button class="btn-base" id="dayNight">昼夜切换</button>
+    </div>
+</div>
+
+<!-- 底部菜单栏：新增【海洋生物汇总】按钮 -->
+<div class="menu-bar">
+    <button class="menu-btn" onclick="openModal('clean-modal')">🗑️ 垃圾清理</button>
+    <button class="menu-btn" onclick="openModal('quiz-modal')">📝海洋答题</button>
+    <button class="menu-btn" onclick="openModal('trash-science')">📚垃圾科普</button>
+    <button class="menu-btn" onclick="openModal('creature-summary')">🐠生物汇总</button>
+    <button class="menu-btn" onclick="openModal('rank-modal')">🏆积分排行榜</button>
+</div>
+
+<!-- 1.单只生物点击弹窗 -->
+<div class="modal" id="pop-info">
+    <div class="modal-box">
+        <h2 id="creatureName">生物名称</h2>
+        <p id="creatureInfo">科普介绍</p>
+        <button class="close-modal" onclick="closeModal('pop-info');addScore(10);">了解完毕 +10积分</button>
+    </div>
+</div>
+
+<!-- 2.垃圾科普弹窗 -->
+<div class="modal" id="trash-science">
+    <div class="modal-box">
+        <h2>海洋垃圾危害科普</h2>
+        <div class="trash-science-item">
+            <h4>🥤塑料瓶、塑料杯</h4>
+            <p>塑料难以自然降解，会碎裂成微塑料。鱼类、浮游生物误食微塑料后会堵塞消化道，毒素会沿着食物链层层累积，最终危害整个海洋生态，甚至通过海鲜影响人类健康。</p>
+        </div>
+        <div class="trash-science-item">
+            <h4>🛞废旧轮胎</h4>
+            <p>沉入海底的轮胎会释放大量重金属与有毒橡胶助剂，污染海水与海床，破坏珊瑚礁栖息地；缠绕住海龟、海豹，导致生物无法游动、觅食最终窒息死亡。</p>
+        </div>
+        <div class="trash-science-item">
+            <h4>🥡外卖餐盒、泡沫塑料</h4>
+            <p>泡沫塑料极易破碎，漂浮在海面被海鸟、海龟误认为水母吞食，造成胃穿孔、无法进食；长期堆积会遮蔽阳光，阻碍海藻光合作用，破坏海洋底层食物链。</p>
+        </div>
+        <div class="trash-science-item">
+            <h4>🧵渔网、渔线（幽灵渔网）</h4>
+            <p>废弃渔网被称为海洋幽灵杀手，会大面积缠绕鲸鲨、海豚、海豹、海龟，导致它们肢体残疾、溺水窒息；还会大面积覆盖珊瑚，造成珊瑚群落大面积死亡。</p>
+        </div>
+        <div class="trash-science-item">
+            <h4>🍬塑料袋、糖果包装</h4>
+            <p>海龟最容易把透明塑料袋当成水母吞食，塑料袋会卡在肠胃中无法消化，导致海龟营养不良、活活饿死；微小塑料包装会被幼鱼误食，大幅降低海洋生物幼崽存活率。</p>
+        </div>
+        <div class="trash-science-item">
+            <h4>🥫金属易拉罐</h4>
+            <p>易拉罐生锈后释放重金属污染海水，尖锐边缘会划伤鱼类、海洋哺乳动物的皮肤，造成伤口感染；沉入海底堆积会破坏底栖生物的生存环境。</p>
+        </div>
+        <button class="close-modal" onclick="closeModal('trash-science')">关闭科普</button>
+    </div>
+</div>
+
+<!-- 新增：海洋生物科普汇总独立弹窗 -->
+<div class="modal" id="creature-summary">
+    <div class="modal-box">
+        <h2>海洋生物科普汇总</h2>
+        <h3 style="margin:12px 0 6px;color:#0369a1;">一、热带珊瑚礁生物</h3>
+        <div class="creature-item">
+            <h4>🐠小丑鱼</h4>
+            <p>属于雀鲷科，与海葵为共生关系；雌雄同体，族群雌鱼消失后最强雄鱼会变性繁衍。塑料缠绕、海葵栖息地被垃圾覆盖是主要生存威胁。</p>
+        </div>
+        <div class="creature-item">
+            <h4>🪸珊瑚</h4>
+            <p>群居刺胞动物，骨骼堆积形成珊瑚礁，被称为海洋热带雨林。海水升温、塑料污染会引发珊瑚白化，造成生态圈崩塌。</p>
+        </div>
+        <div class="creature-item">
+            <h4>🦐小丑虾</h4>
+            <p>栖息于珊瑚与海葵，外壳脆弱，破碎塑料极易划伤甲壳，引发海水细菌感染。</p>
+        </div>
+        <div class="creature-item">
+            <h4>🦛海马</h4>
+            <p>由雄性育儿袋繁育后代，依赖海草床生存；塑料破坏海草床，微塑料误食导致种群数量持续下降。</p>
+        </div>
+
+        <h3 style="margin:12px 0 6px;color:#0369a1;">二、远洋大型海洋生物</h3>
+        <div class="creature-item">
+            <h4>🐳蓝鲸</h4>
+            <p>地球现存最大动物，海洋哺乳动物，依靠上浮换气；幽灵渔网缠绕、食物链毒素富集严重威胁蓝鲸生存。</p>
+        </div>
+        <div class="creature-item">
+            <h4>🦈鲸鲨</h4>
+            <p>全球最大鱼类，性情温顺，以浮游生物为食；废弃渔网缠绕是鲸鲨最主要的人为死亡原因。</p>
+        </div>
+        <div class="creature-item">
+            <h4>🐬海豚</h4>
+            <p>高智商群居哺乳动物，半脑睡眠模式；塑料绳、渔网缠绕脖颈，极易造成窒息与终身伤口。</p>
+        </div>
+        <div class="creature-item">
+            <h4>🐡翻车鱼</h4>
+            <p>体型庞大行动迟缓，难以挣脱缠绕物，海面漂浮塑料袋、渔网常导致其丧失游动能力。</p>
+        </div>
+        <div class="creature-item">
+            <h4>🦭海豹</h4>
+            <p>依靠浮冰休憩繁育，塑料绳套住身体后随生长不断勒紧，引发溃烂与慢性窒息。</p>
+        </div>
+
+        <h3 style="margin:12px 0 6px;color:#0369a1;">三、浅海无脊椎生物</h3>
+        <div class="creature-item">
+            <h4>🐢海龟</h4>
+            <p>存活超2亿年，依靠地磁场跨洋洄游；极易将塑料袋、泡沫当成水母误食，堵塞肠胃饿死。</p>
+        </div>
+        <div class="creature-item">
+            <h4>⭐海星</h4>
+            <p>无大脑与心脏，断肢可再生；塑料污染破坏食物链，微塑料堆积引发海星大规模消亡。</p>
+        </div>
+        <div class="creature-item">
+            <h4>🐙章鱼</h4>
+            <p>拥有3颗心脏9个大脑，海洋无脊椎动物智商天花板；近海垃圾释放重金属，毒素影响繁殖。</p>
+        </div>
+        <div class="creature-item">
+            <h4>🪼水母</h4>
+            <p>无心脏大脑骨骼，微塑料附着体内，毒素顺着食物链向上层层传递。</p>
+        </div>
+
+        <h3 style="margin:12px 0 6px;color:#0369a1;">四、深海生物</h3>
+        <div class="creature-item">
+            <h4>🐟灯笼鱼</h4>
+            <p>深海发光鱼类，深海沉降塑料污染封闭深海环境，破坏深海食物链循环。</p>
+        </div>
+
+        <h3 style="margin:12px 0 6px;color:#0369a1;">五、海洋垃圾共性危害</h3>
+        <p>1.误食致死：塑料、泡沫堵塞消化道，毒素沿食物链富集；<br>
+        2.缠绕致残：幽灵渔网、塑料绳缠绕大型生物，导致窒息、残疾；<br>
+        3.栖息地破坏：垃圾覆盖珊瑚礁、海草床，摧毁繁衍环境；<br>
+        4.慢性中毒：垃圾浸泡释放重金属，污染整片海域。</p>
+
+        <button class="close-modal" onclick="closeModal('creature-summary')">关闭汇总</button>
+    </div>
+</div>
+
+<!-- 3.海洋垃圾清理小游戏弹窗 -->
+<div class="modal" id="clean-modal">
+    <div class="modal-box">
+        <h2>海洋垃圾清理行动</h2>
+        <div class="game-hud">
+            <span>剩余时间：<span id="cleanTime">20</span>s</span>
+            <span>已清理：<span id="cleanCount">0</span>/<span id="cleanTotal">12</span></span>
+        </div>
+        <div id="cleanOcean" style="width:100%;height:360px;background:linear-gradient(180deg,#38bdf8,#0369a1);border-radius:10px;position:relative;overflow:hidden;"></div>
+        <div class="result-text" id="cleanResult"></div>
+        <button class="close-modal" onclick="stopCleanGame();closeModal('clean-modal')">结束游戏</button>
+    </div>
+</div>
+
+<!-- 4.海洋知识答题弹窗 -->
+<div class="modal" id="quiz-modal">
+    <div class="modal-box">
+        <h2>海洋知识答题挑战</h2>
+        <div style="margin:8px 0">剩余时间：<span id="quizTime">50</span>s | 当前得分：<span id="quizScore">0</span></div>
+        <h3 id="quizQuestion"></h3>
+        <div class="answer-list" id="answerWrap"></div>
+        <div class="result-text" id="quizResult"></div>
+        <button class="close-modal" onclick="stopQuizGame();closeModal('quiz-modal')">退出答题</button>
+    </div>
+</div>
+
+<!-- 5.积分排行榜弹窗 -->
+<div class="modal" id="rank-modal">
+    <div class="modal-box">
+        <h2>🏆本地积分排行榜（Top10）</h2>
+        <div class="rank-list" id="rankList"></div>
+        <p style="margin-top:12px;color:#666;font-size:13px;">数据保存在浏览器本地，清除缓存会丢失</p>
+        <button class="close-modal" onclick="closeModal('rank-modal')">关闭</button>
+    </div>
+</div>
+
+<script>
+// ===================== 全局数据初始化 =====================
+let globalData = JSON.parse(localStorage.getItem('oceanGameData')) || {
+    totalScore:0,
+    playerName:"海洋探险家"+Math.floor(Math.random()*999)
+};
+// 扩充海洋生物列表，修正鲸鱼鲨为鲸鲨
+const creatureList = [
+    {name:"小丑鱼",emoji:"🐠",size:50,swimTime:3,info:"小丑鱼属于雀鲷科，和海葵是共生关系。海葵有毒触手保护小丑鱼，小丑鱼帮海葵清理寄生虫；小丑鱼为雌雄同体，群体雌性消失后最强雄鱼会变性为雌性。"},
+    {name:"海龟",emoji:"🐢",size:65,swimTime:4,info:"海龟存活超过2亿年，依靠地磁场洄游，会回到出生沙滩产卵。塑料袋极易被海龟误认为水母吞食，是海龟主要生存威胁。"},
+    {name:"蓝鲸",emoji:"🐳",size:80,swimTime:2.5,info:"蓝鲸是地球现存最大动物，属于哺乳动物而非鱼类，用肺呼吸，定期浮出水面换气。"},
+    {name:"海星",emoji:"⭐",size:45,swimTime:5,info:"海星无大脑心脏，再生能力极强，断掉的腕足可长成完整个体；捕食时会将胃翻出体外消化猎物。"},
+    {name:"章鱼",emoji:"🐙",size:55,swimTime:3.2,info:"章鱼有3颗心脏、9个大脑，可瞬间变色伪装、喷墨逃生，是海洋智商最高的无脊椎动物。"},
+    {name:"海豚",emoji:"🐬",size:70,swimTime:2.8,info:"海豚半脑睡眠，一边大脑休息一边游动换气；依靠回声定位，群居且会救助人类与受伤同伴。"},
+    {name:"鲸鲨",emoji:"🦈",size:75,swimTime:3,info:"鲸鲨是世界上体型最大的鱼类，性格十分温顺，只以浮游生物、小鱼小虾为食；废弃渔网很容易缠绕鲸鲨，导致其溺水身亡。"},
+    {name:"珊瑚",emoji:"🪸",size:48,swimTime:6,info:"珊瑚是动物而非植物，珊瑚礁被称为海洋热带雨林，全球变暖、海洋垃圾会造成珊瑚白化死亡。"},
+    {name:"海马",emoji:"🦛",size:42,swimTime:4.5,info:"海马由雄性负责孕育后代，雄海马拥有育儿袋；海床塑料垃圾会破坏海马栖息的海草床，造成栖息地锐减。"},
+    {name:"水母",emoji:"🪼",size:60,swimTime:5.2,info:"水母没有心脏、大脑和骨骼，依靠触手毒素捕食浮游生物；大量塑料微粒会被水母吸收，引发毒素富集。"},
+    {name:"海豹",emoji:"🦭",size:68,swimTime:3.5,info:"海豹依靠浮冰休憩繁衍，废弃渔网、塑料绳经常缠绕海豹脖颈，造成窒息与伤口溃烂。"},
+    {name:"小丑虾",emoji:"🦐",size:38,swimTime:3.8,info:"小型珊瑚礁虾，以海葵、珊瑚为栖息地，塑料碎片会划伤虾类外壳，引发海洋细菌感染。"},
+    {name:"翻车鱼",emoji:"🐡",size:72,swimTime:4.2,info:"体型巨大的远洋鱼类，行动迟缓，极易被漂浮的塑料袋、渔网缠绕，是海洋垃圾受害严重的物种。"},
+    {name:"灯笼鱼",emoji:"🐟",size:40,swimTime:5.5,info:"深海发光鱼类，深海塑料垃圾会污染深海环境，微塑料顺着食物链进入灯笼鱼体内，影响深海生态循环。"}
+];
+// 垃圾列表：只保留图标数组
+const trashIcons = ["🥤", "🛞", "🥡", "🧵", "🍬", "🥫"];
+// 海洋答题题库
+const quizBank = [
+    {q:"地球表面大约多少面积被海洋覆盖？",opts:["50%","61%","71%","85%"],ans:2},
+    {q:"世界最大珊瑚礁大堡礁位于哪个国家？",opts:["美国","澳大利亚","巴西","日本"],ans:1},
+    {q:"以下哪个属于哺乳动物？",opts:["鲨鱼","鲸鱼","小丑鱼","海马"],ans:1},
+    {q:"珊瑚白化主要原因是？",opts:["海水升温","海水变蓝","鱼类过多","海底地震"],ans:0},
+    {q:"小丑鱼和谁是共生伙伴？",opts:["珊瑚","海葵","海星","章鱼"],ans:1},
+    {q:"海龟依靠什么完成长途洄游？",opts:["太阳方向","地磁场","洋流","海风"],ans:1},
+    {q:"海洋浮游植物制造了地球多少氧气？",opts:["20%","30%","50%-80%","100%"],ans:2},
+    {q:"以下哪项不会污染海洋？",opts:["丢弃渔网","塑料垃圾","海藻自然生长","油污排放"],ans:2},
+    {q:"海星没有以下哪个器官？",opts:["胃","心脏","腕足","皮肤"],ans:1},
+    {q:"章鱼有几颗心脏？",opts:["1颗","2颗","3颗","5颗"],ans:2}
+];
+// 全局计时器
+let cleanTimer,quizTimer;
+let cleanGameRunning = false,quizGameRunning = false;
+
+// ===================== 通用工具函数 =====================
+function random(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
+function saveGlobalData(){localStorage.setItem('oceanGameData',JSON.stringify(globalData));}
+function addScore(num){
+    globalData.totalScore += num;
+    document.getElementById('totalScore').innerText = globalData.totalScore;
+    saveGlobalData();
+    refreshRank();
+}
+// 弹窗开关
+function openModal(id){document.getElementById(id).classList.add('show');}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+// 昼夜切换
+document.getElementById('dayNight').onclick = ()=>document.getElementById('ocean').classList.toggle('night');
+
+// ===================== 1.主海洋生物、气泡自动生成 =====================
+function createCreature(){
+    const data = creatureList[random(0,creatureList.length-1)];
+    const el = document.createElement('div');
+    el.className = 'sea-creature';
+    el.innerHTML = data.emoji;
+    el.style.fontSize = data.size+'px';
+    el.style.left = random(5,90)+'%';
+    el.style.top = random(15,85)+'%';
+    el.style.animationDuration = data.swimTime+'s';
+    el.onclick = (e)=>{
+        e.stopPropagation();
+        document.getElementById('creatureName').innerText = data.name;
+        document.getElementById('creatureInfo').innerText = data.info;
+        openModal('pop-info');
+        el.remove();
+    };
+    document.getElementById('ocean').appendChild(el);
+}
+function createBubble(){
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.style.left = random(0,100)+'%';
+    const size = random(5,15);
+    bubble.style.width = size+'px';
+    bubble.style.height = size+'px';
+    bubble.style.animationDuration = random(6,12)+'s';
+    document.getElementById('ocean').appendChild(bubble);
+    setTimeout(()=>bubble.remove(),12000);
+}
+// 初始化主海洋
+for(let i=0;i<12;i++) createCreature();
+setInterval(createCreature,2500);
+setInterval(createBubble,800);
+document.getElementById('totalScore').innerText = globalData.totalScore;
+
+// ===================== 2.海洋垃圾清理小游戏：垃圾只显示图标 =====================
+function startCleanGame(){
+    cleanGameRunning = true;
+    let time = 20;
+    let count = 0;
+    const total = 12;
+    document.getElementById('cleanTime').innerText = time;
+    document.getElementById('cleanCount').innerText = count;
+    document.getElementById('cleanTotal').innerText = total;
+    document.getElementById('cleanResult').innerText = '';
+    const cleanOcean = document.getElementById('cleanOcean');
+    cleanOcean.innerHTML = '';
+    // 生成垃圾：只放图标，不放文字
+    function spawnTrash(){
+        if(!cleanGameRunning) return;
+        const trash = document.createElement('div');
+        trash.className = 'trash-item trash-icon-only';
+        trash.innerHTML = trashIcons[random(0,trashIcons.length-1)];
+        trash.style.left = random(2,95)+'%';
+        trash.style.top = random(5,85)+'%';
+        trash.style.animationDuration = random(2,4)+'s';
+        trash.onclick = ()=>{
+            count++;
+            document.getElementById('cleanCount').innerText = count;
+            trash.remove();
+            if(count>=total){
+                stopCleanGame();
+                const reward = 150;
+                addScore(reward);
+                document.getElementById('cleanResult').innerText = `清理完成！完美守护海洋，奖励${reward}积分`;
+            }
+        };
+        cleanOcean.appendChild(trash);
+    }
+    for(let i=0;i<total;i++) setTimeout(spawnTrash,i*300);
+    cleanTimer = setInterval(()=>{
+        time--;
+        document.getElementById('cleanTime').innerText = time;
+        if(time<=0){
+            stopCleanGame();
+            const reward = count*10;
+            addScore(reward);
+            document.getElementById('cleanResult').innerText = `时间结束！清理${count}件垃圾，奖励${reward}积分`;
+        }
+    },1000);
+}
+function stopCleanGame(){
+    cleanGameRunning = false;
+    clearInterval(cleanTimer);
+}
+document.getElementById('clean-modal').addEventListener('click',(e)=>{
+    if(e.target.closest('#cleanOcean') && !cleanGameRunning) startCleanGame();
+});
+
+// ===================== 3.海洋限时答题 时间50秒 =====================
+function startQuizGame(){
+    quizGameRunning = true;
+    let time = 50;
+    let score = 0;
+    let usedIdx = [];
+    document.getElementById('quizTime').innerText = time;
+    document.getElementById('quizScore').innerText = score;
+    document.getElementById('quizResult').innerText = '';
+    quizTimer = setInterval(()=>{
+        time--;
+        document.getElementById('quizTime').innerText = time;
+        if(time<=0){
+            stopQuizGame();
+            addScore(score);
+            document.getElementById('quizResult').innerText = `答题结束！总得分：${score}积分`;
+        }
+    },1000);
+    function renderQuestion(){
+        if(!quizGameRunning) return;
+        let idx;
+        do{idx = random(0,quizBank.length-1);}while(usedIdx.includes(idx) && usedIdx.length<quizBank.length);
+        if(usedIdx.length>=quizBank.length){
+            stopQuizGame();
+            addScore(score);
+            document.getElementById('quizResult').innerText = `全部题目答完！总分${score}积分`;
+            return;
+        }
+        usedIdx.push(idx);
+        const q = quizBank[idx];
+        document.getElementById('quizQuestion').innerText = q.q;
+        const wrap = document.getElementById('answerWrap');
+        wrap.innerHTML = '';
+        q.opts.forEach((opt,i)=>{
+            const btn = document.createElement('button');
+            btn.className = 'answer-btn';
+            btn.innerText = opt;
+            btn.onclick = ()=>{
+                if(i === q.ans){
+                    score += 15;
+                    btn.classList.add('right');
+                }else{
+                    btn.classList.add('wrong');
+                    wrap.children[q.ans].classList.add('right');
+                }
+                document.getElementById('quizScore').innerText = score;
+                setTimeout(renderQuestion,800);
+            };
+            wrap.appendChild(btn);
+        });
+    }
+    renderQuestion();
+}
+function stopQuizGame(){
+    quizGameRunning = false;
+    clearInterval(quizTimer);
+}
+document.getElementById('quiz-modal').addEventListener('click',(e)=>{
+    const modalBox = e.target.closest('.modal-box');
+    if(modalBox && !quizGameRunning) startQuizGame();
+});
+
+// ===================== 4.本地积分排行榜Top10 =====================
+function refreshRank(){
+    let rankData = JSON.parse(localStorage.getItem('oceanRankList')) || [];
+    rankData.push({name:globalData.playerName,score:globalData.totalScore,date:new Date().toLocaleDateString()});
+    rankData = rankData.sort((a,b)=>b.score - a.score).filter((item,idx,self)=>self.findIndex(i=>i.name===item.name)===idx).slice(0,10);
+    localStorage.setItem('oceanRankList',JSON.stringify(rankData));
+    const wrap = document.getElementById('rankList');
+    wrap.innerHTML = '';
+    if(rankData.length===0){
+        wrap.innerHTML = '<p style="text-align:center;color:#999">暂无游玩记录，快去积攒积分吧！</p>';
+        return;
+    }
+    rankData.forEach((item,idx)=>{
+        const div = document.createElement('div');
+        div.className = 'rank-item '+(idx===0?'rank-top1':idx===1?'rank-top2':idx===2?'rank-top3':'');
+        div.innerHTML = `<span>第${idx+1}名 ${item.name}</span><span>${item.score}积分</span>`;
+        wrap.appendChild(div);
+    });
+}
+refreshRank();
+</script>
+</body>
+</html>
